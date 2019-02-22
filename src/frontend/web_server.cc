@@ -26,12 +26,13 @@ void write_config_file(TempFile &config_file, const Address &addr,
   config_file.write(apache_main_config);
 
   string path_prefix = PATH_PREFIX;
-  config_file.write("LoadModule unixd_module " + path_prefix +
-                    "/modules/mod_unixd.so\n");
+  /*config_file.write("LoadModule unixd_module " + path_prefix +
+                    "/mod_unixd.so\n");
   config_file.write("LoadModule log_config_module " + path_prefix +
-                    "/modules/mod_log_config.so\n");
+                    "/mod_log_config.so\n");
   config_file.write("LoadModule mpm_prefork_module " + path_prefix +
-                    "/modules/mod_mpm_prefork.so\n");
+                    "/mod_mpm_prefork.so\n");
+                    */
 
   config_file.write("WorkingDir " + working_directory + "\n");
   config_file.write("RecordingDir " + record_path + "\n");
@@ -46,12 +47,16 @@ void write_config_file(TempFile &config_file, const Address &addr,
 
   config_file.write("ServerName mahimahi.\n");
 
-  config_file.write("ErrorLog " + path_prefix + "/logs/apache_errors.log\n");
+  //config_file.write("ErrorLog " + path_prefix + "/logs/apache_errors.log\n");
+  config_file.write( "ErrorLog /tmp/apache_errors.log\n" );
 
   string log_format =
       "%{usec}t %r %D %{Referer}i %{Host}i port:%p %{x-requested-with}i";
+  config_file.write( "CustomLog \"/tmp/apache_custom.log\" \"" + log_format+"\"\n" );
+/*
   config_file.write("CustomLog \"" + path_prefix + "/logs/" + page + "\" \"" +
                     log_format + "\"\n");
+                    */
 
   config_file.write("User #" + to_string(getuid()) + "\n");
 

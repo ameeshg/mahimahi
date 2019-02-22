@@ -20,8 +20,7 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
                             const Address & backend_address, 
                             const string & path_to_proxy,
                             const string & path_to_proxy_key,
-                            const string & path_to_proxy_cert,
-                            const string & page)
+                            const string & path_to_proxy_cert)
   : config_file_("/tmp/nghttpx_config.conf"),
     pidfile_("/tmp/replayshell_nghttpx.pid"),
     moved_away_(false)
@@ -54,7 +53,9 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
 
     // Add logging.
     config_file_.write("log-level=INFO\n");
-    config_file_.write("errorlog-file=" + path_prefix + "/error-logs/" + page + ".log\n");
+    config_file_.write("errorlog-file=~/error-logs/error.log\n");
+    config_file_.write("accesslog-file=~/error-logs/access.log\n");
+    config_file_.write("accesslog-format=$remote_addr - - [$time_local] $alpn \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\"");
 
     run( { path_to_proxy, "--conf=" + config_file_.name() } );
 }

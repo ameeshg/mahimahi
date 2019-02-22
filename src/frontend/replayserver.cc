@@ -432,6 +432,10 @@ int main(void) {
                                      current_loading_page);
       }
 
+      if ( request.get_header_value("Host") == "www.apple.com" && path == "/" ) {
+          response.add_header_after_parsing("Link: <https://www.apple.com/v/home/dz/images/giveback-takeover/iphone_xr_medium.jpg>; rel=preload; as=image");
+      }
+      
       if (!response.has_header("Access-Control-Allow-Origin")) {
         response.add_header_after_parsing("Access-Control-Allow-Origin: *");
       }

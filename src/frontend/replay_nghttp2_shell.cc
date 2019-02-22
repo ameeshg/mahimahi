@@ -54,8 +54,8 @@ int main( int argc, char *argv[] )
 
         check_requirements( argc, argv );
 
-        if ( argc < 8 ) {
-            throw runtime_error( "Usage: " + string( argv[ 0 ] ) + " directory nghttpx_path nghttpx_port nghttpx_key nghttpx_cert vpn_port mode path_to_dependency_file" );
+        if ( argc < 4 ) {
+            throw runtime_error( "Usage: " + string( argv[ 0 ] ) + " directory nghttpx_path nghttpx_key nghttpx_cert" );
         }
 
         /* clean directory name */
@@ -67,8 +67,8 @@ int main( int argc, char *argv[] )
 
         /* Get the application variables. */
         string nghttpx_path = string(argv[ 2 ]);
-        string nghttpx_key_path = string(argv[ 4 ]);
-        string nghttpx_cert_path = string(argv[ 5 ]);
+        string nghttpx_key_path = string(argv[ 3 ]);
+        string nghttpx_cert_path = string(argv[ 4 ]);
 
         /* make sure directory ends with '/' so we can prepend directory to file name for storage */
         if ( directory.back() != '/' ) {
@@ -92,10 +92,6 @@ int main( int argc, char *argv[] )
 
         /* bring up egress */
         assign_address( egress_name, egress_addr, ingress_addr );
-
-        /* set up DNAT between eth0 to ingress address. */
-        int vpn_port = atoi(argv[6]);
-        DNATWithPostrouting dnat( Address(ingress_addr.ip(), vpn_port), "udp", vpn_port );
 
         /* set up NAT between egress and eth0 */
         NAT nat_rule( ingress_addr );
@@ -248,19 +244,10 @@ int main( int argc, char *argv[] )
                   interface_counter++;
               }
 
-              string path_to_dependency_file = argv[8];
-              cout << "Path to dependency file: " << path_to_dependency_file << endl;
-
-              string escaped_page = argv[9];
-
               /* set up web servers */
               vector< WebServer > servers;
               for ( const auto ip_port : unique_ip_and_port ) {
-                if (path_to_dependency_file == "None") {
-                  servers.emplace_back( ip_port, working_directory, directory, escaped_page );
-                } else {
-                  servers.emplace_back( ip_port, working_directory, directory, escaped_page, path_to_dependency_file );
-                }
+                  servers.emplace_back( ip_port, working_directory, directory);
               }
 
               /* set up nghttpx proxies */
@@ -271,15 +258,13 @@ int main( int argc, char *argv[] )
                                         http_default_webserver_address,
                                         nghttpx_path,
                                         nghttpx_key_path,
-                                        nghttpx_cert_path,
-                                        escaped_page );
+                                        nghttpx_cert_path);
 
               reverse_proxies.emplace_back(https_default_reverse_proxy_address,
                                         https_default_webserver_address,
                                         nghttpx_path,
                                         nghttpx_key_path,
-                                        nghttpx_cert_path,
-                                        escaped_page );
+                                        nghttpx_cert_path);
 
               vector< pair< Address, Address >> actual_ip_address_to_reverse_proxy_mapping;
               for ( uint16_t i = 0; i < hostname_to_reverse_proxy_addresses.size(); i++) {
@@ -292,11 +277,10 @@ int main( int argc, char *argv[] )
                                           webserver_address,
                                           nghttpx_path,
                                           nghttpx_key_path,
-                                          nghttpx_cert_path,
-                                          escaped_page );
+                                          nghttpx_cert_path);
               }
 
-              PacFile pac_file("/home/vaspol/Sites/config_testing.pac");
+              PacFile pac_file("~/config_testing.pac");
               cout << hostname_to_reverse_proxy_addresses.size() << endl;
               // pac_file.WriteProxies(hostname_to_reverse_proxy_addresses,
               //                       hostname_to_reverse_proxy_names);
@@ -338,10 +322,6 @@ int main( int argc, char *argv[] )
               /* start dnsmasq */
               event_loop.add_child_process( start_dnsmasq( dnsmasq_args ) );
 
-              string mode = argv[7];
-
-              cout << "mode: " << mode << endl;
-
               vector< string > command;
 
               string path_prefix(PATH_PREFIX);
@@ -350,28 +330,7 @@ int main( int argc, char *argv[] )
               string mapping_filename = path_prefix + "/bin/webserver_to_reverse_proxy.txt";
               ofstream webserver_ip_to_reverse_proxy_mapping_file;
               webserver_ip_to_reverse_proxy_mapping_file.open(mapping_filename);
-              if (mode == "regular_replay") {
-                cout << "regular_replay" << endl;
-                vector< string > vpn_command = vpn.start_command();
-                command.insert(command.end(), vpn_command.begin(), vpn_command.end());
-              } else if (mode == "per_packet_delay") {
-                // Generate mapping between actual IP address and reverse proxy address.
-                for ( auto it = actual_ip_address_to_reverse_proxy_mapping.begin();
-                     it != actual_ip_address_to_reverse_proxy_mapping.end(); ++it ) {
-                  string line = (it->first).ip() + " " + (it->second).ip();
-                  webserver_ip_to_reverse_proxy_mapping_file << line << endl;
-                }
-                webserver_ip_to_reverse_proxy_mapping_file.close();
-
-                cout << "per packet delay" << endl;
-                command.push_back(path_prefix + "/bin/mm-delay-with-nameserver");
-                command.push_back("0"); // Additional delay
-                command.push_back(nameservers[0].ip());
-                command.push_back(mapping_filename);
-                // command.push_back("bash");
-              } else {
-                command.push_back("bash");
-              }
+              command.push_back("bash");
 
               /* start shell */
               event_loop.add_child_process( join( command ), [&]() {
