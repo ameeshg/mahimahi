@@ -21,7 +21,8 @@ To replay the site, run:
 Then inside the shell run:
 `google-chrome --ignore-certificate-errors --proxy-pac-url=/home/username/config_testing.pac`
 
-DEBUGGING:
+DEBUGGING
+
 nghttp logs are in `~/error-logs/`
 apache logs are in `/tmp/`
 
